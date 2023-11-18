@@ -17,24 +17,41 @@ public class PlayerService {
     private final static Logger LOGGER = Logger.getLogger(PlayerService.class.getName());
 
     public List<Player> fetchPlayers(String searchTerm) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            LOGGER.log(Level.WARNING, "Search term is invalid.");
+            return new ArrayList<>();
+        }
+
         LOGGER.log(Level.INFO, "Fetching players with search term: {0}", searchTerm);
         System.out.println("Fetching players from the NBA API for term: " + searchTerm);
+
         List<Player> players = new ArrayList<>();
+
         try {
             JSONObject jsonResponse = getRemoteJSON("https://free-nba.p.rapidapi.com/players?per_page=100&search=" + searchTerm);
+
+            if (jsonResponse == null) {
+                LOGGER.log(Level.WARNING, "NBA API is unavailable.");
+                return players;
+            }
+
             JSONArray jsonArray = jsonResponse.getJSONArray("data");
+
+            if (jsonArray == null) {
+                LOGGER.log(Level.WARNING, "Invalid data received from NBA API.");
+                return players;
+            }
 
             // Inside your loop in the fetchPlayers method
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject jsonPlayer = jsonArray.getJSONObject(i);
-                String id = jsonPlayer.getString("id");
-                String firstName = jsonPlayer.getString("first_name");
-                String lastName = jsonPlayer.getString("last_name");
-                String position = jsonPlayer.optString("position", "N/A");
-                JSONObject teamObj = jsonPlayer.optJSONObject("team");
-                String team = teamObj != null ? teamObj.getString("full_name") : "Unknown Team";
-
-                Player player = new Player(id, firstName, lastName, position, team);
+                Player player = new Player(
+                        jsonPlayer.getString("id"),
+                        jsonPlayer.getString("first_name"),
+                        jsonPlayer.getString("last_name"),
+                        jsonPlayer.optString("position", "N/A"),
+                        jsonPlayer.optJSONObject("team").optString("full_name", "Unknown Team")
+                );
                 players.add(player);
             }
             LOGGER.log(Level.INFO, "Players fetched successfully");
